@@ -1,0 +1,1055 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>ניהול אירועים - מוזיאון האצ"ל בתש"ח</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root { --accent: #1f1f1f; --accent-light: #00706b; --bg: #eeefea; --card-bg: #fff; --text: #222; --muted: #666; --danger: #a4332c; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
+  header { background: var(--accent); color: #fff; padding: 20px; display: flex; align-items: center; justify-content: space-between; }
+  header h1 { margin: 0; font-size: 1.3em; }
+  main { max-width: 900px; margin: 0 auto; padding: 24px 16px 60px; }
+  .card { background: var(--card-bg); border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.08); padding: 20px; margin-bottom: 24px; }
+  .card h2 { margin-top: 0; color: var(--accent); }
+  label { display: block; font-size: 0.9em; margin: 10px 0 4px; color: var(--muted); }
+  input[type=text], input[type=tel], input[type=number], input[type=date], input[type=time], input[type=email], input[type=password], textarea {
+    width: 100%; padding: 9px; border: 1px solid #ccc; border-radius: 6px; font-size: 1em; font-family: inherit;
+  }
+  button { font-family: inherit; cursor: pointer; border: none; border-radius: 8px; padding: 9px 16px; font-size: 0.95em; }
+  .btn-primary { background: var(--accent-light); color: #fff; }
+  .btn-primary:hover { background: var(--accent); }
+  .btn-danger { background: #fdecea; color: var(--danger); }
+  .btn-secondary { background: #eee; color: #333; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .row > * { flex: 1; min-width: 140px; }
+  .actions { margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .session-item { border-top: 1px solid #eee; padding: 14px 0; }
+  .session-item .top { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; }
+  .badge { background: #eef4f6; color: var(--accent); padding: 3px 10px; border-radius: 20px; font-size: 0.85em; }
+  .regs-container, .waitlist-container { overflow-x: auto; }
+  table { width: 100%; min-width: 480px; border-collapse: collapse; margin-top: 12px; font-size: 0.9em; }
+  th, td { text-align: right; padding: 6px 8px; border-bottom: 1px solid #eee; }
+  .msg { margin-top: 10px; font-size: 0.9em; padding: 8px 10px; border-radius: 6px; }
+  .msg.error { background: #fdecea; color: var(--danger); }
+  .msg.success { background: #e8f5e9; color: #2e7d32; }
+  #loginScreen { max-width: 360px; margin: 80px auto; }
+  .hidden { display: none !important; }
+  .muted { color: var(--muted); font-size: 0.9em; }
+  .glance-row { padding: 8px 0; border-top: 1px solid #eee; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .glance-row:first-child { border-top: none; }
+  details.ended-section { margin-top: 10px; }
+  details.ended-section > summary { cursor: pointer; color: var(--muted); padding: 10px 0; font-weight: bold; }
+  .tabs { display: flex; gap: 6px; margin-bottom: 20px; border-bottom: 2px solid #e5e0d6; }
+  .tab-btn { background: none; color: var(--muted); border-radius: 8px 8px 0 0; padding: 10px 18px; font-weight: bold; }
+  .tab-btn.active { background: var(--card-bg); color: var(--accent); box-shadow: 0 -2px 0 var(--accent-light) inset; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>ניהול אירועים</h1>
+  <button id="signOutBtn" class="btn-secondary hidden">התנתק</button>
+</header>
+
+<main>
+  <div id="loginScreen" class="card">
+    <h2>התחברות</h2>
+    <form id="loginForm">
+      <label>אימייל</label>
+      <input type="email" id="loginEmail" required>
+      <label>סיסמה</label>
+      <input type="password" id="loginPassword" required>
+      <div class="actions"><button type="submit" class="btn-primary">התחבר</button></div>
+      <div class="msg error hidden" id="loginMsg"></div>
+    </form>
+    <p class="muted">משתמש אדמין נוצר ידנית ב-Firebase Console (Authentication → Users → Add user).</p>
+  </div>
+
+  <div id="dashboard" class="hidden">
+    <div class="tabs">
+      <button type="button" class="tab-btn active" data-tab="tab-events">אירועים</button>
+      <button type="button" class="tab-btn" data-tab="tab-members">חברי מוזיאון</button>
+      <button type="button" class="tab-btn" data-tab="tab-import">ייבוא מקבצים</button>
+    </div>
+
+    <div id="tab-events" class="tab-panel">
+      <div class="card">
+        <h2>אירועים בשבוע הקרוב</h2>
+        <div id="glancePanel"><p class="muted">טוען...</p></div>
+      </div>
+
+      <div class="card">
+        <h2>אירוע חדש</h2>
+        <form id="newEventForm">
+          <label>כותרת</label>
+          <input type="text" id="newEventTitle" required>
+          <label>תיאור</label>
+          <textarea id="newEventDesc" rows="3"></textarea>
+          <label>תמונה (אופציונלי)</label>
+          <input type="file" id="newEventImage" accept="image/*">
+          <div class="actions">
+            <button type="submit" class="btn-primary" id="newEventSubmitBtn">צור אירוע</button>
+          </div>
+          <div class="msg error hidden" id="newEventMsg"></div>
+        </form>
+      </div>
+
+      <div id="eventsList"></div>
+    </div>
+
+    <div id="tab-members" class="tab-panel hidden">
+      <div class="card">
+        <h2>חברי מוזיאון</h2>
+        <form id="newMemberForm">
+          <div class="row">
+            <div><label>שם מלא</label><input type="text" id="newMemberName" required></div>
+            <div><label>טלפון</label><input type="tel" id="newMemberPhone" required></div>
+            <div><label>אימייל (אופציונלי)</label><input type="email" id="newMemberEmail"></div>
+          </div>
+          <div class="actions"><button type="submit" class="btn-primary">הוסף חבר</button></div>
+          <div class="msg error hidden" id="newMemberMsg"></div>
+        </form>
+
+        <div class="actions" style="margin-top:20px;">
+          <button type="button" class="btn-secondary" id="copyEmailsBtn">העתק כל האימיילים</button>
+          <button type="button" class="btn-secondary" id="copyPhonesBtn">העתק כל הטלפונים</button>
+          <button type="button" class="btn-secondary" id="exportMembersCsvBtn">ייצוא CSV</button>
+        </div>
+        <div class="msg success hidden" id="membersCopyMsg"></div>
+
+        <div id="membersList" style="margin-top:16px;"></div>
+      </div>
+    </div>
+
+    <div id="tab-import" class="tab-panel hidden">
+      <div class="card">
+        <h2>ייבוא נרשמים מקובץ אקסל (בוט)</h2>
+        <p class="muted">קובץ שבו כל הפרטים (שם/טלפון/אימייל) מבולגנים באותה משבצת - האתר ינסה לזהות אותם לבד.</p>
+        <label>קובץ</label>
+        <input type="file" id="importEventFile" accept=".xlsx,.xls,.csv">
+        <label>לאיזה אירוע</label>
+        <select id="importEventSelect"></select>
+        <p class="muted">אם בקובץ מופיעה שעה (כמו 20:30 או 2030), האתר ינסה לשייך כל שורה לסבב המתאים באירוע לבד - ותמיד אפשר לתקן ידנית בתצוגה המקדימה.</p>
+        <div class="actions"><button type="button" class="btn-primary" id="parseEventFileBtn">פענח קובץ</button></div>
+        <div class="msg error hidden" id="importEventMsg"></div>
+        <div id="importEventPreview"></div>
+      </div>
+
+      <div class="card">
+        <h2>ייבוא חברי מוזיאון מקובץ אקסל</h2>
+        <label>קובץ</label>
+        <input type="file" id="importMembersFile" accept=".xlsx,.xls,.csv">
+        <div class="actions"><button type="button" class="btn-primary" id="parseMembersFileBtn">פענח קובץ</button></div>
+        <div class="msg error hidden" id="importMembersMsg"></div>
+        <div id="importMembersPreview"></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+    btn.classList.add('active');
+    document.getElementById(btn.dataset.tab).classList.remove('hidden');
+  });
+});
+</script>
+
+<script type="module">
+import { auth, db } from './firebase-init.js';
+import {
+  onAuthStateChanged, signInWithEmailAndPassword, signOut
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import {
+  collection, getDocs, getDoc, setDoc, addDoc, deleteDoc, doc, updateDoc, runTransaction, query, orderBy, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+const loginScreen = document.getElementById('loginScreen');
+const dashboard = document.getElementById('dashboard');
+const signOutBtn = document.getElementById('signOutBtn');
+
+onAuthStateChanged(auth, user => {
+  if (user) {
+    loginScreen.classList.add('hidden');
+    dashboard.classList.remove('hidden');
+    signOutBtn.classList.remove('hidden');
+    loadEvents();
+    loadMembers();
+  } else {
+    loginScreen.classList.remove('hidden');
+    dashboard.classList.add('hidden');
+    signOutBtn.classList.add('hidden');
+  }
+});
+
+document.getElementById('loginForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  const msg = document.getElementById('loginMsg');
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+    msg.classList.add('hidden');
+  } catch (err) {
+    msg.textContent = 'התחברות נכשלה: ' + err.message;
+    msg.classList.remove('hidden');
+  }
+});
+
+signOutBtn.addEventListener('click', () => signOut(auth));
+
+const CLOUDINARY_CLOUD_NAME = 'qtdjlxjs';
+const CLOUDINARY_UPLOAD_PRESET = 'קלודקוד';
+
+async function uploadImage(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('upload_preset', CLOUDINARY_UPLOAD_PRESET);
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUDINARY_CLOUD_NAME}/image/upload`, {
+    method: 'POST',
+    body: formData
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error?.message || 'העלאת התמונה נכשלה');
+  return data.secure_url;
+}
+
+document.getElementById('newEventForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const title = document.getElementById('newEventTitle').value.trim();
+  const description = document.getElementById('newEventDesc').value.trim();
+  const imageFile = document.getElementById('newEventImage').files[0];
+  const submitBtn = document.getElementById('newEventSubmitBtn');
+  const msg = document.getElementById('newEventMsg');
+  if (!title) return;
+
+  submitBtn.disabled = true;
+  msg.classList.add('hidden');
+  try {
+    let imageUrl = '';
+    if (imageFile) {
+      submitBtn.textContent = 'מעלה תמונה...';
+      imageUrl = await uploadImage(imageFile);
+    }
+    const eventData = { title, description, active: true, createdAt: serverTimestamp() };
+    if (imageUrl) eventData.imageUrl = imageUrl;
+    await addDoc(collection(db, 'events'), eventData);
+    document.getElementById('newEventForm').reset();
+    loadEvents();
+  } catch (err) {
+    msg.textContent = err.message;
+    msg.classList.remove('hidden');
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'צור אירוע';
+  }
+});
+
+document.getElementById('newMemberForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = document.getElementById('newMemberName').value.trim();
+  const phone = document.getElementById('newMemberPhone').value.trim();
+  const email = document.getElementById('newMemberEmail').value.trim();
+  const msg = document.getElementById('newMemberMsg');
+  msg.classList.add('hidden');
+  const added = await addMember({ name, phone, email });
+  if (!added) {
+    msg.textContent = 'חבר עם השם והטלפון האלה כבר קיים ברשימה.';
+    msg.classList.remove('hidden');
+    return;
+  }
+  document.getElementById('newMemberForm').reset();
+  loadMembers();
+});
+
+async function loadEvents() {
+  const list = document.getElementById('eventsList');
+  const glancePanel = document.getElementById('glancePanel');
+  const eventsSnap = await getDocs(query(collection(db, 'events'), orderBy('createdAt', 'desc')));
+  list.innerHTML = '';
+
+  const now = nowDateTimeString();
+  const weekAhead = plusDaysDateTimeString(7);
+  const glanceRows = [];
+  const activeCards = [];
+  const endedCards = [];
+
+  for (const eventDoc of eventsSnap.docs) {
+    const event = eventDoc.data();
+    const eventId = eventDoc.id;
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    const sessionsSnap = await getDocs(query(collection(db, 'events', eventId, 'sessions'), orderBy('dateTime')));
+    let sessionsHtml = '';
+    let hasFutureSession = sessionsSnap.size === 0;
+    sessionsSnap.forEach(sDoc => {
+      const s = sDoc.data();
+      sessionsHtml += renderSessionItem(eventId, sDoc.id, s);
+      if (!s.dateTime || s.dateTime >= now) hasFutureSession = true;
+      if (s.dateTime && s.dateTime >= now && s.dateTime <= weekAhead) {
+        glanceRows.push({ eventTitle: event.title, ...s });
+      }
+    });
+
+    const thumbHtml = event.imageUrl
+      ? `<img src="${escapeHtml(event.imageUrl)}" alt="" style="width:100%; max-width:260px; border-radius:8px; display:block; margin-bottom:12px;">`
+      : '';
+
+    card.dataset.event = eventId;
+    card.innerHTML = `
+      <div class="event-view">
+        ${thumbHtml}
+        <h2>${escapeHtml(event.title)} ${event.active === false ? '<span class="badge" style="background:#fdecea; color:#a4332c;">מוסתר</span>' : ''}</h2>
+        <p class="muted">${escapeHtml(event.description || '')}</p>
+        <div class="actions">
+          <button class="btn-secondary btn-edit-event" data-event="${eventId}">ערוך</button>
+          <button class="btn-secondary btn-toggle-active" data-event="${eventId}" data-active="${event.active !== false}">${event.active === false ? 'הצג אירוע' : 'הסתר אירוע'}</button>
+          <button class="btn-danger btn-delete-event" data-event="${eventId}">מחק אירוע</button>
+        </div>
+      </div>
+
+      <form class="event-edit-form hidden" data-event="${eventId}" style="margin-top:10px;">
+        <label>כותרת</label>
+        <input type="text" name="title" value="${escapeHtml(event.title)}" required>
+        <label>תיאור</label>
+        <textarea name="description" rows="3">${escapeHtml(event.description || '')}</textarea>
+        <label>תמונה חדשה (אופציונלי, מחליפה את הקיימת)</label>
+        <input type="file" name="image" accept="image/*">
+        <div class="actions">
+          <button type="submit" class="btn-primary">שמור</button>
+          <button type="button" class="btn-secondary btn-cancel-edit-event">ביטול</button>
+        </div>
+        <div class="msg error hidden"></div>
+      </form>
+
+      <hr style="margin:20px 0; border:0; border-top:1px solid #eee;">
+      <h3>סבבים</h3>
+      <div class="sessions-container">${sessionsHtml || '<p class="muted">אין סבבים עדיין.</p>'}</div>
+
+      <form class="new-session-form" data-event="${eventId}" style="margin-top:16px;">
+        <div class="row">
+          <div><label>תאריך</label><input type="date" name="date" required></div>
+          <div><label>שעה</label><input type="time" name="time" required></div>
+          <div><label>קיבולת</label><input type="number" name="capacity" min="1" value="20" required></div>
+        </div>
+        <div class="actions"><button type="submit" class="btn-primary">הוסף סבב</button></div>
+      </form>
+    `;
+
+    if (hasFutureSession) {
+      activeCards.push(card);
+    } else {
+      endedCards.push(card);
+    }
+  }
+
+  activeCards.forEach(c => list.appendChild(c));
+
+  if (endedCards.length > 0) {
+    const details = document.createElement('details');
+    details.className = 'ended-section';
+    const summary = document.createElement('summary');
+    summary.textContent = `אירועים שהסתיימו (${endedCards.length})`;
+    details.appendChild(summary);
+    endedCards.forEach(c => details.appendChild(c));
+    list.appendChild(details);
+  }
+
+  glanceRows.sort((a, b) => a.dateTime.localeCompare(b.dateTime));
+  glancePanel.innerHTML = glanceRows.length === 0
+    ? '<p class="muted">אין סבבים בשבוע הקרוב.</p>'
+    : glanceRows.map(s => `
+        <div class="glance-row">
+          <b>${escapeHtml(s.eventTitle)}</b>
+          <bdi dir="ltr">${formatDate(s.date)} · ${escapeHtml(s.time)}</bdi>
+          <span class="badge">${s.registeredCount || 0}/${s.capacity}</span>
+        </div>
+      `).join('');
+
+  populateImportEventSelect(eventsSnap.docs);
+  attachEventHandlers();
+}
+
+function populateImportEventSelect(eventDocs) {
+  const eventSelect = document.getElementById('importEventSelect');
+  const currentValue = eventSelect.value;
+  eventSelect.innerHTML = eventDocs.map(d => `<option value="${d.id}">${escapeHtml(d.data().title)}</option>`).join('');
+  if (currentValue && eventDocs.some(d => d.id === currentValue)) eventSelect.value = currentValue;
+}
+
+function nowDateTimeString() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function plusDaysDateTimeString(days) {
+  const d = new Date(Date.now() + days * 86400000);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function renderSessionItem(eventId, sessionId, s) {
+  return `
+    <div class="session-item" data-event="${eventId}" data-session="${sessionId}">
+      <div class="session-view">
+        <div class="top">
+          <div><b><bdi dir="ltr">${formatDate(s.date)} · ${escapeHtml(s.time)}</bdi></b> <span class="badge">${s.registeredCount || 0}/${s.capacity}</span></div>
+          <div class="actions" style="margin-top:0;">
+            <button class="btn-secondary btn-edit-session">ערוך</button>
+            <button class="btn-secondary btn-add-manual-reg">הוסף נרשם</button>
+            <button class="btn-secondary btn-show-regs">הצג נרשמים</button>
+            <button class="btn-secondary btn-show-waitlist">רשימת המתנה</button>
+            <button class="btn-danger btn-delete-session">מחק סבב</button>
+          </div>
+        </div>
+      </div>
+
+      <form class="session-edit-form hidden" style="margin-top:10px;">
+        <div class="row">
+          <div><label>תאריך</label><input type="date" name="date" value="${escapeHtml(s.date)}" required></div>
+          <div><label>שעה</label><input type="time" name="time" value="${escapeHtml(s.time)}" required></div>
+          <div><label>קיבולת</label><input type="number" name="capacity" min="${s.registeredCount || 0}" value="${s.capacity}" required></div>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn-primary">שמור</button>
+          <button type="button" class="btn-secondary btn-cancel-edit-session">ביטול</button>
+        </div>
+        <div class="msg error hidden"></div>
+      </form>
+
+      <form class="manual-reg-form hidden" style="margin-top:10px;">
+        <div class="row">
+          <div><label>שם מלא</label><input type="text" name="name" required></div>
+          <div><label>טלפון</label><input type="tel" name="phone" required></div>
+        </div>
+        <div class="row">
+          <div><label>אימייל (אופציונלי)</label><input type="email" name="email"></div>
+          <div><label>טלפון נוסף (אופציונלי)</label><input type="tel" name="phone2"></div>
+          <div><label>מספר אנשים</label><input type="number" name="partySize" min="1" value="1" required></div>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn-primary">הוסף</button>
+          <button type="button" class="btn-secondary btn-cancel-manual-reg">ביטול</button>
+        </div>
+        <div class="msg error hidden"></div>
+      </form>
+
+      <div class="regs-container"></div>
+      <div class="waitlist-container"></div>
+    </div>
+  `;
+}
+
+async function deleteSessionCascade(eventId, sessionId) {
+  const regsSnap = await getDocs(collection(db, 'events', eventId, 'sessions', sessionId, 'registrations'));
+  const wlSnap = await getDocs(collection(db, 'events', eventId, 'sessions', sessionId, 'waitlist'));
+  await Promise.all([
+    ...regsSnap.docs.map(r => deleteDoc(r.ref)),
+    ...wlSnap.docs.map(w => deleteDoc(w.ref))
+  ]);
+  await deleteDoc(doc(db, 'events', eventId, 'sessions', sessionId));
+}
+
+async function deleteEventCascade(eventId) {
+  const sessionsSnap = await getDocs(collection(db, 'events', eventId, 'sessions'));
+  for (const s of sessionsSnap.docs) {
+    await deleteSessionCascade(eventId, s.id);
+  }
+  await deleteDoc(doc(db, 'events', eventId));
+}
+
+function attachEventHandlers() {
+  document.querySelectorAll('.btn-delete-event').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if (!confirm('למחוק את האירוע? כל הסבבים, ההרשמות ורשימות ההמתנה שלו יימחקו גם הם. פעולה זו לא הופכת.')) return;
+      btn.disabled = true;
+      await deleteEventCascade(btn.dataset.event);
+      loadEvents();
+    });
+  });
+
+  document.querySelectorAll('.btn-toggle-active').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const isActive = btn.dataset.active === 'true';
+      await updateDoc(doc(db, 'events', btn.dataset.event), { active: !isActive });
+      loadEvents();
+    });
+  });
+
+  document.querySelectorAll('.btn-edit-event').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const card = btn.closest('.card');
+      card.querySelector('.event-view').classList.add('hidden');
+      card.querySelector('.event-edit-form').classList.remove('hidden');
+    });
+  });
+
+  document.querySelectorAll('.btn-cancel-edit-event').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const card = btn.closest('.card');
+      card.querySelector('.event-edit-form').classList.add('hidden');
+      card.querySelector('.event-view').classList.remove('hidden');
+    });
+  });
+
+  document.querySelectorAll('.event-edit-form').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const eventId = form.dataset.event;
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const msg = form.querySelector('.msg');
+      const title = form.title.value.trim();
+      const description = form.description.value.trim();
+      const imageFile = form.image.files[0];
+      submitBtn.disabled = true;
+      msg.classList.add('hidden');
+      try {
+        const updateData = { title, description };
+        if (imageFile) {
+          submitBtn.textContent = 'מעלה תמונה...';
+          updateData.imageUrl = await uploadImage(imageFile);
+        }
+        await updateDoc(doc(db, 'events', eventId), updateData);
+        loadEvents();
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.classList.remove('hidden');
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'שמור';
+      }
+    });
+  });
+
+  document.querySelectorAll('.new-session-form').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const eventId = form.dataset.event;
+      const date = form.date.value;
+      const time = form.time.value;
+      const capacity = parseInt(form.capacity.value, 10);
+      await addDoc(collection(db, 'events', eventId, 'sessions'), { date, time, dateTime: `${date}T${time}`, capacity, registeredCount: 0 });
+      loadEvents();
+    });
+  });
+
+  document.querySelectorAll('.btn-delete-session').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const item = btn.closest('.session-item');
+      if (!confirm('למחוק את הסבב? כל ההרשמות ורשימת ההמתנה שלו יימחקו גם הן.')) return;
+      await deleteSessionCascade(item.dataset.event, item.dataset.session);
+      loadEvents();
+    });
+  });
+
+  document.querySelectorAll('.btn-edit-session').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = btn.closest('.session-item');
+      item.querySelector('.session-view').classList.add('hidden');
+      item.querySelector('.session-edit-form').classList.remove('hidden');
+    });
+  });
+
+  document.querySelectorAll('.btn-cancel-edit-session').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = btn.closest('.session-item');
+      item.querySelector('.session-edit-form').classList.add('hidden');
+      item.querySelector('.session-view').classList.remove('hidden');
+    });
+  });
+
+  document.querySelectorAll('.session-edit-form').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const item = form.closest('.session-item');
+      const msg = form.querySelector('.msg');
+      const date = form.date.value;
+      const time = form.time.value;
+      const capacity = parseInt(form.capacity.value, 10);
+      msg.classList.add('hidden');
+      if (capacity < parseInt(form.capacity.min, 10)) {
+        msg.textContent = `הקיבולת לא יכולה להיות קטנה ממספר הנרשמים הקיים (${form.capacity.min}).`;
+        msg.classList.remove('hidden');
+        return;
+      }
+      await updateDoc(doc(db, 'events', item.dataset.event, 'sessions', item.dataset.session), {
+        date, time, dateTime: `${date}T${time}`, capacity
+      });
+      loadEvents();
+    });
+  });
+
+  document.querySelectorAll('.btn-add-manual-reg').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const item = btn.closest('.session-item');
+      item.querySelector('.manual-reg-form').classList.toggle('hidden');
+    });
+  });
+
+  document.querySelectorAll('.btn-cancel-manual-reg').forEach(btn => {
+    btn.addEventListener('click', () => {
+      btn.closest('.manual-reg-form').classList.add('hidden');
+    });
+  });
+
+  document.querySelectorAll('.manual-reg-form').forEach(form => {
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const item = form.closest('.session-item');
+      const msg = form.querySelector('.msg');
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const name = form.name.value.trim();
+      const phone = form.phone.value.trim();
+      const email = form.email.value.trim();
+      const phone2 = form.phone2.value.trim();
+      const partySize = parseInt(form.partySize.value, 10);
+
+      submitBtn.disabled = true;
+      msg.classList.add('hidden');
+
+      const sessionRef = doc(db, 'events', item.dataset.event, 'sessions', item.dataset.session);
+      const regRef = doc(db, 'events', item.dataset.event, 'sessions', item.dataset.session, 'registrations', registrationId(item.dataset.session, name, phone));
+
+      try {
+        await runTransaction(db, async (tx) => {
+          const [sessionSnap, regSnap] = [await tx.get(sessionRef), await tx.get(regRef)];
+          if (regSnap.exists()) throw new Error('כבר קיימת הרשמה עם השם והטלפון האלה לסבב הזה.');
+          const data = sessionSnap.data();
+          const newCount = (data.registeredCount || 0) + partySize;
+          if (newCount > data.capacity) throw new Error('אין מספיק מקומות פנויים בסבב הזה.');
+          tx.update(sessionRef, { registeredCount: newCount });
+          tx.set(regRef, { name, phone, email: email || '', phone2: phone2 || '', partySize, createdAt: serverTimestamp() });
+        });
+        loadEvents();
+      } catch (err) {
+        msg.textContent = err.message;
+        msg.classList.remove('hidden');
+        submitBtn.disabled = false;
+      }
+    });
+  });
+
+  document.querySelectorAll('.btn-show-regs').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const item = btn.closest('.session-item');
+      const regsContainer = item.querySelector('.regs-container');
+      if (regsContainer.dataset.loaded === '1') {
+        regsContainer.innerHTML = '';
+        regsContainer.dataset.loaded = '0';
+        return;
+      }
+      const regsSnap = await getDocs(collection(db, 'events', item.dataset.event, 'sessions', item.dataset.session, 'registrations'));
+      const regs = regsSnap.docs.map(d => d.data());
+      if (regs.length === 0) {
+        regsContainer.innerHTML = '<p class="muted">אין נרשמים עדיין.</p>';
+      } else {
+        let rows = regs.map((r, i) => `<tr><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.phone)}</td><td>${escapeHtml(r.phone2)}</td><td>${escapeHtml(r.email)}</td><td>${r.partySize}</td><td><button type="button" class="btn-secondary btn-add-member-from-reg" data-i="${i}" style="padding:4px 10px; font-size:0.85em;">הוסף לחברים</button></td></tr>`).join('');
+        regsContainer.innerHTML = `
+          <table>
+            <thead><tr><th>שם</th><th>טלפון</th><th>טלפון נוסף</th><th>אימייל</th><th>כמות</th><th></th></tr></thead>
+            <tbody>${rows}</tbody>
+          </table>
+          <button class="btn-secondary btn-export-csv" style="margin-top:10px;">ייצוא CSV</button>
+        `;
+        regsContainer.querySelector('.btn-export-csv').addEventListener('click', () => exportCsv(regs));
+        regsContainer.querySelectorAll('.btn-add-member-from-reg').forEach(b => {
+          b.addEventListener('click', async () => {
+            const r = regs[parseInt(b.dataset.i, 10)];
+            await addMember({ name: r.name, phone: r.phone, email: r.email || '' });
+            b.textContent = 'נוסף ✓';
+            b.disabled = true;
+          });
+        });
+      }
+      regsContainer.dataset.loaded = '1';
+    });
+  });
+
+  document.querySelectorAll('.btn-show-waitlist').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const item = btn.closest('.session-item');
+      const wlContainer = item.querySelector('.waitlist-container');
+      if (wlContainer.dataset.loaded === '1') {
+        wlContainer.innerHTML = '';
+        wlContainer.dataset.loaded = '0';
+        return;
+      }
+      await renderWaitlist(item, wlContainer);
+      wlContainer.dataset.loaded = '1';
+    });
+  });
+}
+
+async function renderWaitlist(item, wlContainer) {
+  const eventId = item.dataset.event;
+  const sessionId = item.dataset.session;
+  const wlSnap = await getDocs(collection(db, 'events', eventId, 'sessions', sessionId, 'waitlist'));
+  const entries = wlSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  if (entries.length === 0) {
+    wlContainer.innerHTML = '<p class="muted">אין ברשימת ההמתנה.</p>';
+    return;
+  }
+
+  wlContainer.innerHTML = `
+    <table>
+      <thead><tr><th>שם</th><th>טלפון</th><th>טלפון נוסף</th><th>אימייל</th><th>כמות</th><th></th></tr></thead>
+      <tbody>${entries.map(w => `
+        <tr data-id="${w.id}">
+          <td>${escapeHtml(w.name)}</td><td>${escapeHtml(w.phone)}</td><td>${escapeHtml(w.phone2)}</td><td>${escapeHtml(w.email)}</td><td>${w.partySize}</td>
+          <td>
+            <button type="button" class="btn-secondary btn-promote-waitlist" style="padding:4px 10px; font-size:0.85em;">העבר להרשמה</button>
+            <button type="button" class="btn-danger btn-remove-waitlist" style="padding:4px 10px; font-size:0.85em;">מחק</button>
+          </td>
+        </tr>
+      `).join('')}</tbody>
+    </table>
+  `;
+
+  wlContainer.querySelectorAll('.btn-remove-waitlist').forEach(b => {
+    b.addEventListener('click', async () => {
+      const wlId = b.closest('tr').dataset.id;
+      await deleteDoc(doc(db, 'events', eventId, 'sessions', sessionId, 'waitlist', wlId));
+      await renderWaitlist(item, wlContainer);
+    });
+  });
+
+  wlContainer.querySelectorAll('.btn-promote-waitlist').forEach(b => {
+    b.addEventListener('click', async () => {
+      const wlId = b.closest('tr').dataset.id;
+      const entry = entries.find(w => w.id === wlId);
+      const sessionRef = doc(db, 'events', eventId, 'sessions', sessionId);
+      const regRef = doc(db, 'events', eventId, 'sessions', sessionId, 'registrations', registrationId(sessionId, entry.name, entry.phone));
+      try {
+        await runTransaction(db, async (tx) => {
+          const [sessionSnap, regSnap] = [await tx.get(sessionRef), await tx.get(regRef)];
+          if (regSnap.exists()) throw new Error('כבר קיימת הרשמה עם השם והטלפון האלה לסבב הזה.');
+          const data = sessionSnap.data();
+          const newCount = (data.registeredCount || 0) + entry.partySize;
+          if (newCount > data.capacity) throw new Error('אין מספיק מקומות פנויים בסבב הזה.');
+          tx.update(sessionRef, { registeredCount: newCount });
+          tx.set(regRef, { name: entry.name, phone: entry.phone, email: entry.email || '', phone2: entry.phone2 || '', partySize: entry.partySize, createdAt: serverTimestamp() });
+        });
+        await deleteDoc(doc(db, 'events', eventId, 'sessions', sessionId, 'waitlist', wlId));
+        loadEvents();
+      } catch (err) {
+        alert(err.message);
+      }
+    });
+  });
+}
+
+// ---- Excel/CSV import (bot export dumps name+phone+email jumbled into one cell) ----
+
+function extractTime(text) {
+  const colonMatch = text.match(/\b([01]?\d|2[0-3]):([0-5]\d)\b/);
+  if (colonMatch) return { time: `${colonMatch[1].padStart(2, '0')}:${colonMatch[2]}`, raw: colonMatch[0] };
+  const digitMatch = text.match(/\b([01]\d|2[0-3])([0-5]\d)\b/);
+  if (digitMatch) return { time: `${digitMatch[1]}:${digitMatch[2]}`, raw: digitMatch[0] };
+  return null;
+}
+
+function parseImportRow(cells) {
+  const text = cells.map(c => (c === undefined || c === null ? '' : String(c))).join(' ');
+  const emailMatch = text.match(/[^\s,;]+@[^\s,;]+\.[^\s,;]+/);
+  const email = emailMatch ? emailMatch[0] : '';
+  let rest = email ? text.replace(email, ' ') : text;
+  const phoneMatch = rest.match(/(\+?\d[\d\-\s]{6,}\d)/);
+  const phoneRaw = phoneMatch ? phoneMatch[0] : '';
+  const phone = phoneRaw.replace(/[^\d+]/g, '');
+  rest = phoneRaw ? rest.replace(phoneRaw, ' ') : rest;
+
+  const timeInfo = extractTime(rest);
+  const time = timeInfo ? timeInfo.time : '';
+  if (timeInfo) rest = rest.replace(timeInfo.raw, ' ');
+
+  const name = rest.replace(/[,;|:]/g, ' ').replace(/\s+/g, ' ').trim();
+  return { name, phone, email, time };
+}
+
+function parseImportFile(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'array' });
+        const sheet = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+        const parsed = rows.map(parseImportRow).filter(p => p.name || p.phone || p.email);
+        resolve(parsed);
+      } catch (err) { reject(err); }
+    };
+    reader.onerror = () => reject(new Error('קריאת הקובץ נכשלה.'));
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+function renderImportPreview(container, rows, importLabel, onImport, sessions) {
+  const sessionColumn = !!sessions;
+  const sessionOptions = sessions ? sessions.map(s =>
+    `<option value="${s.id}">${formatDate(s.date)} · ${escapeHtml(s.time)} (${s.registeredCount || 0}/${s.capacity})</option>`
+  ).join('') : '';
+
+  container.innerHTML = `
+    <table style="margin-top:16px;">
+      <thead><tr><th></th><th>שם</th><th>טלפון</th><th>אימייל</th>${sessionColumn ? '<th>סבב</th>' : ''}</tr></thead>
+      <tbody>${rows.map((r, i) => `
+        <tr data-i="${i}">
+          <td><input type="checkbox" class="import-row-check" checked></td>
+          <td><input type="text" class="import-row-name" value="${escapeHtml(r.name)}" style="min-width:120px;"></td>
+          <td><input type="text" class="import-row-phone" value="${escapeHtml(r.phone)}" style="min-width:110px;"></td>
+          <td><input type="text" class="import-row-email" value="${escapeHtml(r.email)}" style="min-width:160px;"></td>
+          ${sessionColumn ? `<td><select class="import-row-session" style="min-width:180px;">${sessionOptions}</select></td>` : ''}
+        </tr>
+      `).join('')}</tbody>
+    </table>
+    <div class="actions" style="margin-top:14px;">
+      <button type="button" class="btn-primary" id="confirmImportBtn">${importLabel}</button>
+    </div>
+    <div id="importResultMsg" class="msg" style="display:none;"></div>
+  `;
+
+  if (sessionColumn) {
+    container.querySelectorAll('tbody tr').forEach((tr, i) => {
+      const detectedTime = rows[i].time;
+      if (!detectedTime) return;
+      const match = sessions.find(s => s.time === detectedTime);
+      if (match) tr.querySelector('.import-row-session').value = match.id;
+    });
+  }
+
+  container.querySelector('#confirmImportBtn').addEventListener('click', async () => {
+    const btn = container.querySelector('#confirmImportBtn');
+    btn.disabled = true;
+    const selected = [];
+    container.querySelectorAll('tbody tr').forEach(tr => {
+      if (!tr.querySelector('.import-row-check').checked) return;
+      const person = {
+        name: tr.querySelector('.import-row-name').value.trim(),
+        phone: tr.querySelector('.import-row-phone').value.trim(),
+        email: tr.querySelector('.import-row-email').value.trim()
+      };
+      if (sessionColumn) person.sessionId = tr.querySelector('.import-row-session').value;
+      selected.push(person);
+    });
+    const result = await onImport(selected);
+    const msg = container.querySelector('#importResultMsg');
+    msg.className = 'msg success';
+    msg.style.display = 'block';
+    msg.textContent = `נוספו: ${result.added} | כבר היו קיימים: ${result.duplicate} | נכשלו: ${result.failed}`;
+    btn.disabled = false;
+  });
+}
+
+async function registerPerson(eventId, sessionId, { name, phone, email, partySize }) {
+  const sessionRef = doc(db, 'events', eventId, 'sessions', sessionId);
+  const regRef = doc(db, 'events', eventId, 'sessions', sessionId, 'registrations', registrationId(sessionId, name, phone));
+  await runTransaction(db, async (tx) => {
+    const [sessionSnap, regSnap] = [await tx.get(sessionRef), await tx.get(regRef)];
+    if (regSnap.exists()) throw new Error('duplicate');
+    const data = sessionSnap.data();
+    const newCount = (data.registeredCount || 0) + partySize;
+    if (newCount > data.capacity) throw new Error('capacity');
+    tx.update(sessionRef, { registeredCount: newCount });
+    tx.set(regRef, { name, phone, email: email || '', phone2: '', partySize, createdAt: serverTimestamp() });
+  });
+}
+
+document.getElementById('parseEventFileBtn').addEventListener('click', async () => {
+  const fileInput = document.getElementById('importEventFile');
+  const msg = document.getElementById('importEventMsg');
+  const preview = document.getElementById('importEventPreview');
+  msg.classList.add('hidden');
+  preview.innerHTML = '';
+  const file = fileInput.files[0];
+  if (!file) { msg.textContent = 'בחר קובץ קודם.'; msg.classList.remove('hidden'); return; }
+
+  const eventId = document.getElementById('importEventSelect').value;
+  if (!eventId) { msg.textContent = 'בחר אירוע קודם.'; msg.classList.remove('hidden'); return; }
+
+  try {
+    const rows = await parseImportFile(file);
+    if (rows.length === 0) { msg.textContent = 'לא נמצאו שורות בקובץ.'; msg.classList.remove('hidden'); return; }
+
+    const sessionsSnap = await getDocs(query(collection(db, 'events', eventId, 'sessions'), orderBy('dateTime')));
+    const sessions = sessionsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    if (sessions.length === 0) { msg.textContent = 'לאירוע הזה אין עדיין סבבים - הוסף סבב קודם.'; msg.classList.remove('hidden'); return; }
+
+    renderImportPreview(preview, rows, 'ייבא את הנבחרים כהרשמות', async (selected) => {
+      let added = 0, duplicate = 0, failed = 0;
+      for (const p of selected) {
+        if (!p.name || !p.phone || !p.sessionId) { failed++; continue; }
+        try {
+          await registerPerson(eventId, p.sessionId, { ...p, partySize: 1 });
+          added++;
+        } catch (e) {
+          if (e.message === 'duplicate') duplicate++; else failed++;
+        }
+      }
+      loadEvents();
+      return { added, duplicate, failed };
+    }, sessions);
+  } catch (err) {
+    msg.textContent = 'שגיאה בקריאת הקובץ: ' + err.message;
+    msg.classList.remove('hidden');
+  }
+});
+
+document.getElementById('parseMembersFileBtn').addEventListener('click', async () => {
+  const fileInput = document.getElementById('importMembersFile');
+  const msg = document.getElementById('importMembersMsg');
+  const preview = document.getElementById('importMembersPreview');
+  msg.classList.add('hidden');
+  preview.innerHTML = '';
+  const file = fileInput.files[0];
+  if (!file) { msg.textContent = 'בחר קובץ קודם.'; msg.classList.remove('hidden'); return; }
+
+  try {
+    const rows = await parseImportFile(file);
+    if (rows.length === 0) { msg.textContent = 'לא נמצאו שורות בקובץ.'; msg.classList.remove('hidden'); return; }
+
+    renderImportPreview(preview, rows, 'ייבא את הנבחרים כחברים', async (selected) => {
+      let added = 0, duplicate = 0, failed = 0;
+      for (const p of selected) {
+        if (!p.name || !p.phone) { failed++; continue; }
+        const ok = await addMember(p);
+        if (ok) added++; else duplicate++;
+      }
+      loadMembers();
+      return { added, duplicate, failed };
+    });
+  } catch (err) {
+    msg.textContent = 'שגיאה בקריאת הקובץ: ' + err.message;
+    msg.classList.remove('hidden');
+  }
+});
+
+function exportCsv(regs) {
+  const esc = (v) => `"${(v || '').replace(/"/g, '""')}"`;
+  const header = 'שם,טלפון,טלפון נוסף,אימייל,כמות\n';
+  const rows = regs.map(r => `${esc(r.name)},${esc(r.phone)},${esc(r.phone2)},${esc(r.email)},${r.partySize}`).join('\n');
+  downloadCsv('נרשמים.csv', header + rows);
+}
+
+function downloadCsv(filename, body) {
+  const csv = '﻿' + body;
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function memberId(name, phone) {
+  return hashString(`member|${normalizeName(name)}|${normalizePhone(phone)}`);
+}
+
+async function addMember({ name, phone, email }) {
+  const ref = doc(db, 'members', memberId(name, phone));
+  const snap = await getDoc(ref);
+  if (snap.exists()) return false;
+  await setDoc(ref, { name, phone, email: email || '', createdAt: serverTimestamp() });
+  return true;
+}
+
+async function loadMembers() {
+  const list = document.getElementById('membersList');
+  const snap = await getDocs(query(collection(db, 'members'), orderBy('createdAt', 'desc')));
+  const members = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+  if (members.length === 0) {
+    list.innerHTML = '<p class="muted">אין עדיין חברים ברשימה.</p>';
+    return;
+  }
+
+  list.innerHTML = `
+    <table>
+      <thead><tr><th>שם</th><th>טלפון</th><th>אימייל</th><th></th></tr></thead>
+      <tbody>${members.map(m => `
+        <tr data-id="${m.id}">
+          <td>${escapeHtml(m.name)}</td><td>${escapeHtml(m.phone)}</td><td>${escapeHtml(m.email)}</td>
+          <td><button type="button" class="btn-danger btn-delete-member" style="padding:4px 10px; font-size:0.85em;">מחק</button></td>
+        </tr>
+      `).join('')}</tbody>
+    </table>
+  `;
+
+  list.querySelectorAll('.btn-delete-member').forEach(b => {
+    b.addEventListener('click', async () => {
+      await deleteDoc(doc(db, 'members', b.closest('tr').dataset.id));
+      loadMembers();
+    });
+  });
+
+  document.getElementById('copyEmailsBtn').onclick = () => copyMemberField(members, 'email');
+  document.getElementById('copyPhonesBtn').onclick = () => copyMemberField(members, 'phone');
+  document.getElementById('exportMembersCsvBtn').onclick = () => {
+    const esc = (v) => `"${(v || '').replace(/"/g, '""')}"`;
+    const header = 'שם,טלפון,אימייל\n';
+    const rows = members.map(m => `${esc(m.name)},${esc(m.phone)},${esc(m.email)}`).join('\n');
+    downloadCsv('חברי_מוזיאון.csv', header + rows);
+  };
+}
+
+async function copyMemberField(members, field) {
+  const values = members.map(m => m[field]).filter(Boolean);
+  const text = values.join(', ');
+  const msg = document.getElementById('membersCopyMsg');
+  try {
+    await navigator.clipboard.writeText(text);
+    msg.textContent = `${values.length} ${field === 'email' ? 'כתובות אימייל' : 'מספרי טלפון'} הועתקו ללוח.`;
+  } catch (e) {
+    msg.textContent = text;
+  }
+  msg.classList.remove('hidden');
+  setTimeout(() => msg.classList.add('hidden'), 4000);
+}
+
+function formatDate(dateStr) {
+  const [y, m, d] = (dateStr || '').split('-');
+  if (!y || !m || !d) return escapeHtml(dateStr || '');
+  return `${d}/${m}/${y}`;
+}
+
+function normalizeName(name) {
+  return (name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function normalizePhone(phone) {
+  return (phone || '').replace(/\D/g, '');
+}
+
+// Must match the same hash used in index.html so admin-added and
+// visitor-added registrations land on the same doc ID scheme.
+function hashString(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16);
+}
+
+function registrationId(sessionId, name, phone) {
+  return hashString(`${sessionId}|${normalizeName(name)}|${normalizePhone(phone)}`);
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+</script>
+
+</body>
+</html>

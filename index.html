@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>אירועי מוזיאון האצ"ל בתש"ח</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Assistant:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --etzel-blue: #1f1f1f; --etzel-gold: #008c86; --etzel-gold-dark: #00706b;
+    --bg: #eeefea; --card-bg: #fff; --text: #212529; --muted: #666; --danger: #a4332c;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: 'Assistant', Tahoma, Arial, sans-serif; margin: 0; background: var(--bg); color: var(--text); }
+  .hero h1, .event-card h2 { font-family: 'Assistant', Tahoma, Arial, sans-serif; font-weight: 800; }
+  .icon { width: 16px; height: 16px; vertical-align: -3px; margin-inline-end: 5px; fill: currentColor; flex-shrink: 0; }
+  .hp-field { position: absolute; left: -9999px; top: -9999px; height: 0; width: 0; overflow: hidden; }
+
+  .hero {
+    position: relative; padding: 18px 20px; text-align: center; color: #fff;
+    background: var(--etzel-gold); border-bottom: 5px solid var(--etzel-blue);
+  }
+  .hero-inner { max-width: 760px; margin: 0 auto; }
+  .hero-logo { height: 58px; }
+  .hero p { margin: 6px 0 0; color: #ffffff; font-size: 0.92em; font-weight: 600; }
+
+  main { max-width: 760px; margin: 0 auto; padding: 32px 16px 60px; min-height: 40vh; }
+
+  @keyframes fadeInUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+  .event-card { background: var(--card-bg); border: 1px solid #d9dcd5; border-top: 4px solid var(--etzel-gold); margin-bottom: 28px; animation: fadeInUp 0.4s ease-out backwards; }
+  .event-image { width: 100%; max-height: 340px; object-fit: contain; display: block; background: #dfe3dc; }
+  .event-body { padding: 22px 24px 24px; }
+  .event-card h2 { margin: 0 0 8px; color: var(--etzel-blue); font-size: 1.4em; }
+  .event-desc { color: var(--muted); margin-bottom: 18px; white-space: pre-line; line-height: 1.5; }
+
+  .session-row {
+    border-top: 1px solid #d9dcd5; padding: 16px 2px; margin-top: 4px;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .session-info b { display: block; color: var(--etzel-blue); font-size: 1.05em; }
+  .session-info span { color: var(--muted); font-size: 0.9em; }
+  .spots-left { font-weight: bold; color: var(--etzel-gold-dark); }
+  .spots-left.low { color: var(--danger); }
+
+  button { font-family: inherit; cursor: pointer; border: none; border-radius: 3px; padding: 10px 22px; font-size: 0.95em; transition: 0.15s; }
+  .btn-primary { background: var(--etzel-gold); color: #ffffff; font-weight: 700; }
+  .btn-primary:hover { background: var(--etzel-blue); color: #fff; }
+  .btn-primary:disabled { background: #ccc; cursor: not-allowed; }
+
+  .reg-form, .cancel-form { display: none; margin-top: 16px; padding-top: 16px; border-top: 1px dashed #ddd; width: 100%; }
+  .reg-form.open, .cancel-form.open { display: block; }
+  .reg-form label, .cancel-form label { display: block; font-size: 0.9em; margin: 10px 0 4px; color: var(--muted); }
+  .reg-form input, .cancel-form input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 3px; font-size: 1em; font-family: inherit; }
+  .reg-form input:focus, .cancel-form input:focus { outline: none; border-color: var(--etzel-gold); }
+  .reg-form .actions, .cancel-form .actions, .waitlist-form .actions { margin-top: 14px; display: flex; flex-wrap: wrap; gap: 10px; }
+
+  .btn-link { background: none; color: var(--muted); text-decoration: underline; padding: 6px 4px; font-size: 0.85em; border-radius: 0; }
+  .btn-link:hover { color: var(--etzel-blue); }
+  .session-actions { display: flex; align-items: center; gap: 10px; }
+
+  .msg { margin-top: 10px; font-size: 0.9em; padding: 8px 10px; border-radius: 3px; }
+  .msg.error { background: #fdecea; color: var(--danger); }
+  .msg.success { background: #eaf3e3; color: #3f6b2c; }
+
+  .empty-state { text-align: center; color: var(--muted); padding: 60px 20px; }
+  .empty-state-main { padding: 70px 20px; }
+  .empty-state-main .icon-lg { width: 44px; height: 44px; fill: #c8d3d0; margin-bottom: 14px; }
+  .empty-state-main p { margin: 0 0 6px; font-size: 1.05em; }
+  .empty-state-main a { color: var(--etzel-gold-dark); font-weight: 700; text-decoration: none; white-space: nowrap; }
+  .empty-state-main a:hover { text-decoration: underline; }
+
+  .site-footer {
+    margin-top: 40px; background: var(--etzel-gold); color: #ffffff; text-align: center;
+    padding: 34px 20px 38px; border-top: 5px solid var(--etzel-blue);
+  }
+  .footer-logo { height: 70px; margin-bottom: 22px; }
+  .footer-details { display: flex; gap: 16px; flex-wrap: wrap; justify-content: center; font-weight: 600; font-size: 0.92em; }
+
+  .footer-grid {
+    max-width: 760px; margin: 0 auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px;
+    text-align: center; border-top: 1px solid rgba(44,44,26,0.15); padding-top: 24px;
+  }
+  .footer-col h3 { margin: 0 0 8px; font-size: 0.95em; text-transform: uppercase; letter-spacing: 0.04em; }
+  .footer-col p { margin: 0 0 4px; font-size: 0.88em; }
+  .footer-col a { color: #ffffff; font-weight: 700; text-decoration: none; }
+  .footer-col a:hover { text-decoration: underline; }
+  @media (max-width: 560px) { .footer-grid { grid-template-columns: 1fr; } }
+
+  .footer-social { margin-top: 14px; }
+  .footer-social > span { display: block; font-size: 0.85em; font-weight: 700; margin-bottom: 8px; }
+  .footer-social-icons { display: flex; justify-content: center; gap: 10px; }
+  .footer-social-icons a {
+    width: 30px; height: 30px; border-radius: 50%; background: #ffffff; color: var(--etzel-gold);
+    display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  }
+  .footer-social-icons a:hover { background: var(--etzel-blue); text-decoration: none; }
+  .footer-social-icons svg { width: 15px; height: 15px; fill: currentColor; }
+
+  .skeleton-card { background: var(--card-bg); border: 1px solid #d9dcd5; overflow: hidden; margin-bottom: 28px; }
+  .skeleton-block { background: linear-gradient(90deg, #e3e7e1 25%, #f1f3ee 50%, #e3e7e1 75%); background-size: 200% 100%; animation: shimmer 1.4s infinite; }
+  @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+  .skeleton-image { height: 200px; }
+  .skeleton-line { height: 16px; margin: 18px 24px; }
+  .skeleton-line.short { width: 40%; }
+
+  .event-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .btn-share { background: none; border: 1px solid #ccc; color: var(--muted); border-radius: 3px; width: 34px; height: 34px; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .btn-share:hover { border-color: var(--etzel-gold-dark); color: var(--etzel-gold-dark); }
+  .share-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--etzel-blue); color: #fff; padding: 10px 20px; border-radius: 3px; font-size: 0.9em; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 10; }
+  .share-toast.show { opacity: 1; }
+
+  .waitlist-form { display: none; margin-top: 16px; padding-top: 16px; border-top: 1px dashed #ddd; width: 100%; }
+  .waitlist-form.open { display: block; }
+  .waitlist-form label { display: block; font-size: 0.9em; margin: 10px 0 4px; color: var(--muted); }
+  .waitlist-form input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 3px; font-size: 1em; font-family: inherit; }
+  .waitlist-form .actions { margin-top: 14px; display: flex; gap: 10px; }
+  .btn-outline { background: none; border: 2px solid var(--etzel-gold-dark); color: var(--etzel-gold-dark); font-weight: 700; }
+  .btn-outline:hover { background: var(--etzel-gold); color: #ffffff; }
+
+  .ended-events { margin-top: 10px; }
+  .ended-events summary { cursor: pointer; color: var(--muted); font-size: 0.95em; padding: 10px 0; }
+  .ended-event-row { padding: 10px 0; border-top: 1px solid #eee; }
+  .ended-event-row b { color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="hero">
+  <div class="hero-inner">
+    <img class="hero-logo" src="tashach-logo.png" alt="מוזיאון האצ״ל בתש״ח">
+    <p>הרשמה לאירועים ולסיורים</p>
+  </div>
+</div>
+
+<main id="eventsContainer">
+  <div class="skeleton-card"><div class="skeleton-block skeleton-image"></div><div class="skeleton-block skeleton-line"></div><div class="skeleton-block skeleton-line short"></div></div>
+  <div class="skeleton-card"><div class="skeleton-block skeleton-line"></div><div class="skeleton-block skeleton-line short"></div></div>
+</main>
+
+<div class="share-toast" id="shareToast">הקישור הועתק!</div>
+
+<footer class="site-footer">
+  <img class="footer-logo" src="tashach-logo.png" alt="מוזיאון האצ״ל בתש״ח">
+
+  <div class="footer-grid">
+    <div class="footer-col">
+      <h3>יצירת קשר</h3>
+      <p>נחום גולדמן 2, גן צ'ארלס קלור, טיילת תל אביב-יפו</p>
+      <p><bdi dir="ltr"><a href="tel:0733532940">073-353-2940</a></bdi></p>
+      <p><a href="mailto:etzel48@gmail.com">etzel48@gmail.com</a></p>
+
+      <div class="footer-social">
+        <span>עקבו אחרינו</span>
+        <div class="footer-social-icons">
+          <a href="https://www.facebook.com/מוזיאון-האצל-בתשח-355563914632894/" target="_blank" rel="noopener" aria-label="פייסבוק">
+            <svg viewBox="0 0 24 24"><path d="M22 12.06C22 6.48 17.52 2 11.94 2S1.88 6.48 1.88 12.06c0 5.05 3.66 9.23 8.44 9.94v-7.03H7.9v-2.91h2.42V9.85c0-2.39 1.42-3.71 3.6-3.71 1.04 0 2.13.19 2.13.19v2.35h-1.2c-1.18 0-1.55.74-1.55 1.5v1.8h2.64l-.42 2.91h-2.22V22c4.78-.71 8.44-4.89 8.44-9.94z"/></svg>
+          </a>
+          <a href="https://instagram.com/etzel_1948?utm_medium=copy_link" target="_blank" rel="noopener" aria-label="אינסטגרם">
+            <svg viewBox="0 0 24 24"><path d="M12 2c2.72 0 3.06.01 4.12.06 1.06.05 1.79.22 2.43.47.66.26 1.22.6 1.77 1.16.56.55.9 1.11 1.16 1.77.25.64.42 1.37.47 2.43.05 1.06.06 1.4.06 4.12s-.01 3.06-.06 4.12c-.05 1.06-.22 1.79-.47 2.43a4.9 4.9 0 0 1-1.16 1.77 4.9 4.9 0 0 1-1.77 1.16c-.64.25-1.37.42-2.43.47-1.06.05-1.4.06-4.12.06s-3.06-.01-4.12-.06c-1.06-.05-1.79-.22-2.43-.47a4.9 4.9 0 0 1-1.77-1.16 4.9 4.9 0 0 1-1.16-1.77c-.25-.64-.42-1.37-.47-2.43C2.01 15.06 2 14.72 2 12s.01-3.06.06-4.12c.05-1.06.22-1.79.47-2.43.26-.66.6-1.22 1.16-1.77A4.9 4.9 0 0 1 5.46.52c.64-.25 1.37-.42 2.43-.47C8.94 2.01 9.28 2 12 2zm0 1.8c-2.67 0-2.99.01-4.04.06-.87.04-1.34.18-1.65.3-.42.16-.72.36-1.03.67-.31.31-.51.61-.67 1.03-.12.31-.26.78-.3 1.65C4.26 8.75 4.25 9.07 4.25 12s.01 3.25.06 4.3c.04.87.18 1.34.3 1.65.16.42.36.72.67 1.03.31.31.61.51 1.03.67.31.12.78.26 1.65.3 1.05.05 1.37.06 4.04.06s2.99-.01 4.04-.06c.87-.04 1.34-.18 1.65-.3.42-.16.72-.36 1.03-.67.31-.31.51-.61.67-1.03.12-.31.26-.78.3-1.65.05-1.05.06-1.37.06-4.3s-.01-3.25-.06-4.3c-.04-.87-.18-1.34-.3-1.65a2.78 2.78 0 0 0-.67-1.03 2.78 2.78 0 0 0-1.03-.67c-.31-.12-.78-.26-1.65-.3-1.05-.05-1.37-.06-4.04-.06zm0 3.06a5.14 5.14 0 1 1 0 10.28 5.14 5.14 0 0 1 0-10.28zm0 1.8a3.34 3.34 0 1 0 0 6.68 3.34 3.34 0 0 0 0-6.68zm5.34-1.99a1.2 1.2 0 1 1-2.4 0 1.2 1.2 0 0 1 2.4 0z"/></svg>
+          </a>
+          <a href="mailto:etzel48@gmail.com" aria-label="מייל">
+            <svg viewBox="0 0 24 24"><path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm0 2v.01L12 13l8-6.99V6H4zm0 12h16V8.24l-8 7-8-7V18z"/></svg>
+          </a>
+        </div>
+      </div>
+    </div>
+    <div class="footer-col">
+      <h3>ימים ושעות הביקור</h3>
+      <p>ימים א'-ה': <bdi dir="ltr">08:30-16:30</bdi></p>
+      <p>שישי-שבת: סגור</p>
+    </div>
+    <div class="footer-col">
+      <h3>מחירון</h3>
+      <p>מבוגר - 20 ש"ח</p>
+      <p>נוער - 15 ש"ח</p>
+      <p>אזרח ותיק - 15 ש"ח</p>
+      <p>סטודנט - 15 ש"ח</p>
+      <p><a href="https://museums.mod.gov.il/sites/Tashach/Pages/Prices.aspx" target="_blank" rel="noopener"><strong>למחירון המלא</strong></a></p>
+    </div>
+  </div>
+</footer>
+
+<script type="module">
+import { db } from './firebase-init.js';
+import {
+  collection, getDocs, getDoc, setDoc, doc, runTransaction, serverTimestamp, query, orderBy
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+const container = document.getElementById('eventsContainer');
+
+const ICON_CALENDAR = '<svg class="icon" viewBox="0 0 24 24"><path d="M7 2v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7zm12 8v10H5V10h14z"/></svg>';
+const ICON_CLOCK = '<svg class="icon" viewBox="0 0 24 24"><path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2a8 8 0 1 1 0 16 8 8 0 0 1 0-16zm-1 2v6.41l4.29 4.3 1.42-1.42L13 11.59V6h-2z"/></svg>';
+const ICON_SHARE = '<svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M18 16.08c-.76 0-1.44.3-1.96.77L8.91 12.7a2.98 2.98 0 0 0 0-1.4l7.05-4.11c.54.5 1.25.81 2.04.81a3 3 0 1 0-3-3c0 .24.04.47.09.7L8.04 9.81a3 3 0 1 0 0 4.38l7.13 4.16c-.05.21-.08.43-.08.65a2.99 2.99 0 1 0 3-3z"/></svg>';
+
+// Bots that auto-fill every form field tend to fill this too; real visitors
+// never see or touch it. If it's non-empty on submit, we quietly drop the
+// request instead of writing to Firestore.
+const HONEYPOT_FIELD = '<input type="text" name="website" class="hp-field" tabindex="-1" autocomplete="off" aria-hidden="true">';
+
+async function loadEvents() {
+  const eventsSnap = await getDocs(collection(db, 'events'));
+  const events = eventsSnap.docs.filter(d => d.data().active !== false);
+
+  if (events.length === 0) {
+    container.innerHTML = `
+      <div class="empty-state empty-state-main">
+        <svg class="icon-lg" viewBox="0 0 24 24"><path d="M7 2v2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2V2h-2v2H9V2H7zm12 8v10H5V10h14z"/></svg>
+        <p>אין כרגע אירועים פתוחים להרשמה.</p>
+        <p>לפרטים על סיורים ואירועים קרובים אפשר להתקשר ל-<a href="tel:0733532940"><bdi dir="ltr">073-353-2940</bdi></a>.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const now = nowDateTimeString();
+  const upcoming = [];
+  const ended = [];
+
+  for (const eventDoc of events) {
+    const event = eventDoc.data();
+    const sessionsSnap = await getDocs(query(collection(db, 'events', eventDoc.id, 'sessions'), orderBy('dateTime')));
+    const allSessions = sessionsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const futureSessions = allSessions.filter(s => !s.dateTime || s.dateTime >= now);
+
+    if (allSessions.length > 0 && futureSessions.length === 0) {
+      ended.push({ id: eventDoc.id, event });
+    } else {
+      const soonest = futureSessions.length ? futureSessions[0].dateTime : '9999';
+      upcoming.push({ id: eventDoc.id, event, futureSessions, sortKey: soonest || '9999' });
+    }
+  }
+
+  upcoming.sort((a, b) => a.sortKey.localeCompare(b.sortKey));
+
+  container.innerHTML = '';
+  let cardIndex = 0;
+  for (const { id, event, futureSessions } of upcoming) {
+    const card = document.createElement('div');
+    card.className = 'event-card';
+    card.id = `event-${id}`;
+    card.style.animationDelay = `${Math.min(cardIndex++, 5) * 0.08}s`;
+
+    let sessionsHtml = futureSessions.map(s => {
+      const spotsLeft = s.capacity - (s.registeredCount || 0);
+      return renderSession(id, s.id, s, spotsLeft, event.title);
+    }).join('');
+
+    if (!sessionsHtml) {
+      sessionsHtml = '<p class="empty-state" style="padding:20px 0;">אין סבבים פתוחים לאירוע זה כרגע.</p>';
+    }
+
+    const imageHtml = event.imageUrl
+      ? `<img class="event-image" src="${escapeHtml(event.imageUrl)}" alt="${escapeHtml(event.title || '')}">`
+      : '';
+
+    card.innerHTML = `
+      ${imageHtml}
+      <div class="event-body">
+        <div class="event-header">
+          <h2>${escapeHtml(event.title || '')}</h2>
+          <button type="button" class="btn-share" data-event="${id}" data-title="${escapeHtml(event.title || '')}" aria-label="שתף אירוע">${ICON_SHARE}</button>
+        </div>
+        <div class="event-desc">${escapeHtml(event.description || '')}</div>
+        ${sessionsHtml}
+      </div>
+    `;
+    container.appendChild(card);
+  }
+
+  if (ended.length > 0) {
+    const details = document.createElement('details');
+    details.className = 'ended-events';
+    const rows = ended.map(({ event }) => `
+      <div class="ended-event-row">
+        <b>${escapeHtml(event.title || '')}</b>
+        <div class="muted" style="font-size:0.9em;">${escapeHtml(event.description || '')}</div>
+      </div>
+    `).join('');
+    details.innerHTML = `<summary>אירועים שהסתיימו (${ended.length})</summary>${rows}`;
+    container.appendChild(details);
+  }
+
+  attachHandlers();
+  scrollToHashEvent();
+}
+
+function scrollToHashEvent() {
+  if (!location.hash) return;
+  const el = document.querySelector(location.hash);
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function renderSession(eventId, sessionId, s, spotsLeft, eventTitle) {
+  const full = spotsLeft <= 0;
+  return `
+    <div class="session-row" data-event="${eventId}" data-session="${sessionId}" data-datetime="${escapeHtml(s.dateTime || '')}" data-title="${escapeHtml(eventTitle || '')}">
+      <div class="session-info">
+        <b><bdi dir="ltr">${ICON_CALENDAR}${formatDate(s.date)} · ${ICON_CLOCK}${escapeHtml(s.time)}</bdi></b>
+        <span class="spots-left ${spotsLeft <= 3 ? 'low' : ''}">${full ? 'אין מקומות פנויים' : spotsLeft + ' מקומות פנויים'}</span>
+      </div>
+      <div class="session-actions">
+        ${full
+          ? '<button type="button" class="btn-outline btn-toggle-waitlist">הצטרפ/י לרשימת המתנה</button>'
+          : '<button class="btn-primary btn-toggle-form">הירשם</button>'}
+        <button type="button" class="btn-link btn-toggle-cancel">ביטול הרשמה</button>
+      </div>
+      <form class="reg-form">
+        <div class="form-fields">
+          <label>שם מלא</label>
+          <input type="text" name="name" required>
+          <label>טלפון</label>
+          <input type="tel" name="phone" required>
+          <label>אימייל (אופציונלי)</label>
+          <input type="email" name="email">
+          <label>טלפון נוסף (אופציונלי)</label>
+          <input type="tel" name="phone2">
+          <label>מספר אנשים</label>
+          <input type="number" name="partySize" min="1" max="${spotsLeft}" value="1" required>
+          ${HONEYPOT_FIELD}
+          <div class="actions">
+            <button type="submit" class="btn-primary">שלח הרשמה</button>
+          </div>
+          <div class="msg" style="display:none;"></div>
+        </div>
+        <div class="form-result" style="display:none;">
+          <div class="msg"></div>
+          <div class="actions">
+            <a class="btn-primary btn-add-calendar hidden-link" target="_blank" rel="noopener" style="text-decoration:none; display:none;">הוסף ליומן</a>
+            <button type="button" class="btn-primary btn-close-result">סגור</button>
+          </div>
+        </div>
+      </form>
+      <form class="waitlist-form">
+        <div class="form-fields">
+          <p class="muted" style="margin:0 0 10px; font-size:0.85em;">הסבב מלא. נרשום אתכם לרשימת המתנה, וניצור קשר אם יתפנה מקום.</p>
+          <label>שם מלא</label>
+          <input type="text" name="name" required>
+          <label>טלפון</label>
+          <input type="tel" name="phone" required>
+          <label>אימייל (אופציונלי)</label>
+          <input type="email" name="email">
+          <label>טלפון נוסף (אופציונלי)</label>
+          <input type="tel" name="phone2">
+          <label>מספר אנשים</label>
+          <input type="number" name="partySize" min="1" value="1" required>
+          ${HONEYPOT_FIELD}
+          <div class="actions">
+            <button type="submit" class="btn-primary">הצטרפ/י לרשימת המתנה</button>
+          </div>
+          <div class="msg" style="display:none;"></div>
+        </div>
+        <div class="form-result" style="display:none;">
+          <div class="msg"></div>
+          <div class="actions">
+            <button type="button" class="btn-primary btn-close-result">סגור</button>
+          </div>
+        </div>
+      </form>
+      <form class="cancel-form">
+        <div class="form-fields">
+          <p class="muted" style="margin:0 0 10px; font-size:0.85em;">הכנס/י שוב את השם והטלפון שאיתם נרשמת כדי לבטל.</p>
+          <label>שם מלא</label>
+          <input type="text" name="name" required>
+          <label>טלפון</label>
+          <input type="tel" name="phone" required>
+          <div class="actions">
+            <button type="submit" class="btn-primary">בטל הרשמה</button>
+          </div>
+        </div>
+        <div class="form-result" style="display:none;">
+          <div class="msg"></div>
+          <div class="actions">
+            <button type="button" class="btn-primary btn-close-result">סגור</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  `;
+}
+
+function attachHandlers() {
+  container.querySelectorAll('.btn-toggle-form').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const form = btn.closest('.session-row').querySelector('.reg-form');
+      form.classList.toggle('open');
+    });
+  });
+
+  container.querySelectorAll('.btn-toggle-cancel').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const form = btn.closest('.session-row').querySelector('.cancel-form');
+      form.classList.toggle('open');
+    });
+  });
+
+  container.querySelectorAll('.btn-toggle-waitlist').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const form = btn.closest('.session-row').querySelector('.waitlist-form');
+      form.classList.toggle('open');
+    });
+  });
+
+  container.querySelectorAll('.waitlist-form').forEach(form => {
+    const fields = form.querySelector('.form-fields');
+    const result = form.querySelector('.form-result');
+    const resultMsg = result.querySelector('.msg');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (form.website.value) return; // honeypot tripped - silently drop
+
+      const row = form.closest('.session-row');
+      const eventId = row.dataset.event;
+      const sessionId = row.dataset.session;
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const name = form.name.value.trim();
+      const phone = form.phone.value.trim();
+      const email = form.email.value.trim();
+      const phone2 = form.phone2.value.trim();
+      const partySize = parseInt(form.partySize.value, 10);
+
+      submitBtn.disabled = true;
+
+      try {
+        await joinWaitlist(eventId, sessionId, { name, phone, email, phone2, partySize });
+        resultMsg.className = 'msg success';
+        resultMsg.textContent = 'נרשמת לרשימת ההמתנה. ניצור קשר אם יתפנה מקום.';
+      } catch (err) {
+        resultMsg.className = 'msg error';
+        resultMsg.textContent = err.message || 'שגיאה, נסו שוב.';
+      }
+
+      fields.style.display = 'none';
+      result.style.display = 'block';
+      submitBtn.disabled = false;
+    });
+
+    result.querySelector('.btn-close-result').addEventListener('click', () => {
+      loadEvents();
+    });
+  });
+
+  container.querySelectorAll('.btn-share').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const url = `${location.origin}${location.pathname}#event-${btn.dataset.event}`;
+      if (navigator.share) {
+        try { await navigator.share({ title: btn.dataset.title, url }); } catch (e) { /* user cancelled */ }
+      } else {
+        try {
+          await navigator.clipboard.writeText(url);
+          showToast();
+        } catch (e) {
+          prompt('העתק/י את הקישור:', url);
+        }
+      }
+    });
+  });
+
+  container.querySelectorAll('.cancel-form').forEach(form => {
+    const fields = form.querySelector('.form-fields');
+    const result = form.querySelector('.form-result');
+    const resultMsg = result.querySelector('.msg');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const row = form.closest('.session-row');
+      const eventId = row.dataset.event;
+      const sessionId = row.dataset.session;
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const name = form.name.value.trim();
+      const phone = form.phone.value.trim();
+
+      submitBtn.disabled = true;
+
+      try {
+        await cancelRegistration(eventId, sessionId, { name, phone });
+        resultMsg.className = 'msg success';
+        resultMsg.textContent = 'ההרשמה בוטלה בהצלחה.';
+      } catch (err) {
+        resultMsg.className = 'msg error';
+        resultMsg.textContent = err.message || 'שגיאה בביטול, נסו שוב.';
+      }
+
+      fields.style.display = 'none';
+      result.style.display = 'block';
+      submitBtn.disabled = false;
+    });
+
+    result.querySelector('.btn-close-result').addEventListener('click', () => {
+      loadEvents();
+    });
+  });
+
+  container.querySelectorAll('.reg-form').forEach(form => {
+    const fields = form.querySelector('.form-fields');
+    const result = form.querySelector('.form-result');
+    const resultMsg = result.querySelector('.msg');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (form.website.value) return; // honeypot tripped - silently drop
+
+      const row = form.closest('.session-row');
+      const eventId = row.dataset.event;
+      const sessionId = row.dataset.session;
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const name = form.name.value.trim();
+      const phone = form.phone.value.trim();
+      const email = form.email.value.trim();
+      const phone2 = form.phone2.value.trim();
+      const partySize = parseInt(form.partySize.value, 10);
+
+      submitBtn.disabled = true;
+
+      const calendarLink = result.querySelector('.btn-add-calendar');
+
+      try {
+        await registerForSession(eventId, sessionId, { name, phone, email, phone2, partySize });
+        resultMsg.className = 'msg success';
+        resultMsg.textContent = 'ההרשמה נקלטה בהצלחה!';
+        calendarLink.href = buildCalendarLink(row.dataset.title, row.dataset.datetime);
+        calendarLink.style.display = 'inline-block';
+      } catch (err) {
+        resultMsg.className = 'msg error';
+        resultMsg.textContent = err.message || 'שגיאה בהרשמה, נסו שוב.';
+        calendarLink.style.display = 'none';
+      }
+
+      fields.style.display = 'none';
+      result.style.display = 'block';
+      submitBtn.disabled = false;
+    });
+
+    result.querySelector('.btn-close-result').addEventListener('click', () => {
+      loadEvents();
+    });
+  });
+}
+
+function normalizeName(name) {
+  return (name || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+function normalizePhone(phone) {
+  return (phone || '').replace(/\D/g, '');
+}
+
+// A simple, stable (non-cryptographic) hash - just needs to turn the same
+// name+phone into the same Firestore doc ID every time, both at registration
+// and at cancellation.
+function hashString(str) {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) {
+    h ^= str.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16);
+}
+
+function registrationId(sessionId, name, phone) {
+  return hashString(`${sessionId}|${normalizeName(name)}|${normalizePhone(phone)}`);
+}
+
+async function registerForSession(eventId, sessionId, { name, phone, email, phone2, partySize }) {
+  const sessionRef = doc(db, 'events', eventId, 'sessions', sessionId);
+  const regRef = doc(db, 'events', eventId, 'sessions', sessionId, 'registrations', registrationId(sessionId, name, phone));
+
+  await runTransaction(db, async (tx) => {
+    const [sessionSnap, regSnap] = [await tx.get(sessionRef), await tx.get(regRef)];
+    if (!sessionSnap.exists()) throw new Error('הסבב לא נמצא.');
+    if (regSnap.exists()) throw new Error('כבר קיימת הרשמה עם השם והטלפון האלה לסבב הזה.');
+    const data = sessionSnap.data();
+    const newCount = (data.registeredCount || 0) + partySize;
+    if (newCount > data.capacity) {
+      throw new Error('אין מספיק מקומות פנויים לכמות המבוקשת.');
+    }
+    tx.update(sessionRef, { registeredCount: newCount });
+    tx.set(regRef, { name, phone, email: email || '', phone2: phone2 || '', partySize, createdAt: serverTimestamp() });
+  });
+}
+
+async function joinWaitlist(eventId, sessionId, { name, phone, email, phone2, partySize }) {
+  const wlRef = doc(db, 'events', eventId, 'sessions', sessionId, 'waitlist', registrationId(sessionId, name, phone));
+  const wlSnap = await getDoc(wlRef);
+  if (wlSnap.exists()) throw new Error('כבר נרשמת לרשימת ההמתנה עם הפרטים האלה.');
+  await setDoc(wlRef, { name, phone, email: email || '', phone2: phone2 || '', partySize, createdAt: serverTimestamp() });
+}
+
+function showToast() {
+  const toast = document.getElementById('shareToast');
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
+}
+
+async function cancelRegistration(eventId, sessionId, { name, phone }) {
+  const sessionRef = doc(db, 'events', eventId, 'sessions', sessionId);
+  const regRef = doc(db, 'events', eventId, 'sessions', sessionId, 'registrations', registrationId(sessionId, name, phone));
+
+  await runTransaction(db, async (tx) => {
+    const [sessionSnap, regSnap] = [await tx.get(sessionRef), await tx.get(regRef)];
+    if (!regSnap.exists()) throw new Error('לא נמצאה הרשמה תואמת לשם ולטלפון שהוזנו.');
+    const partySize = regSnap.data().partySize || 0;
+    const newCount = Math.max(0, (sessionSnap.data().registeredCount || 0) - partySize);
+    tx.delete(regRef);
+    tx.update(sessionRef, { registeredCount: newCount });
+  });
+}
+
+function formatDate(dateStr) {
+  const [y, m, d] = (dateStr || '').split('-');
+  if (!y || !m || !d) return escapeHtml(dateStr || '');
+  return `${d}/${m}/${y}`;
+}
+
+function nowDateTimeString() {
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+const MUSEUM_ADDRESS = "נחום גולדמן 2, גן צ'ארלס קלור, טיילת תל אביב-יפו";
+const DEFAULT_EVENT_DURATION_MIN = 90;
+
+function buildCalendarLink(title, dateTimeStr) {
+  if (!dateTimeStr) return '#';
+  const start = new Date(dateTimeStr);
+  if (isNaN(start)) return '#';
+  const end = new Date(start.getTime() + DEFAULT_EVENT_DURATION_MIN * 60000);
+  const pad = n => String(n).padStart(2, '0');
+  const fmt = d => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: title || 'אירוע במוזיאון האצ"ל',
+    dates: `${fmt(start)}/${fmt(end)}`,
+    location: MUSEUM_ADDRESS
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+loadEvents().catch(err => {
+  container.innerHTML = '<div class="empty-state">שגיאה בטעינת האירועים.</div>';
+  console.error(err);
+});
+</script>
+
+</body>
+</html>
