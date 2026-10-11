@@ -2,14 +2,13 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/fireba
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
 import { getAuth } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
-// TODO: paste the web-app config of the NEW (Tashach) Firebase project here
 const firebaseConfig = {
-  apiKey: "PASTE_ME",
-  authDomain: "PASTE_ME",
-  projectId: "PASTE_ME",
-  storageBucket: "PASTE_ME",
-  messagingSenderId: "PASTE_ME",
-  appId: "PASTE_ME"
+  apiKey: "AIzaSyDurfN-hS59t_rOEXJLnJD_2yQ6VTRoitQ",
+  authDomain: "etzel-museum-tashach-events.firebaseapp.com",
+  projectId: "etzel-museum-tashach-events",
+  storageBucket: "etzel-museum-tashach-events.firebasestorage.app",
+  messagingSenderId: "45535724113",
+  appId: "1:45535724113:web:d819896ac605db720e6e70"
 };
 
 export const app = initializeApp(firebaseConfig);
